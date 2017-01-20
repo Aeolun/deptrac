@@ -1,0 +1,69 @@
+#!/usr/bin/env php
+<?php
+
+if (is_file($autoload = getcwd() . '/vendor/autoload.php')) {
+    require $autoload;
+} elseif (is_file($autoload = getcwd() . '/../../autoload.php')) {
+    require $autoload;
+}
+
+if (is_file($autoload = __DIR__ . '/../vendor/autoload.php')) {
+    require($autoload);
+} elseif (is_file($autoload = __DIR__ . '/../../../autoload.php')) {
+    require($autoload);
+} else {
+    fwrite(STDERR,
+        'You must set up the project dependencies, run the following commands:' . PHP_EOL .
+        'curl -s http://getcomposer.org/installer | php' . PHP_EOL .
+        'php composer.phar install' . PHP_EOL
+    );
+    exit(1);
+}
+
+use SensioLabs\Deptrac\CompilerPass\CollectorPass;
+use SensioLabs\Deptrac\CompilerPass\OutputFormatterPass;
+use Symfony\Component\Config\FileLocator;
+use Symfony\Component\Console\Application;
+use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\DependencyInjection\Loader\XmlFileLoader;
+
+
+if (!version_compare(phpversion(), "5.5.9", '>=')) {
+    echo 'Required at least PHP version 5.5.9, your version: ' . PHP_VERSION . "\n";
+    die(1);
+}
+
+$serviceLoc = [
+    __DIR__.'/../services.xml',
+    __DIR__. '/../sensiolabs-de/deptrac/services.xml' 
+];
+
+$servicePath = null;
+foreach($serviceLoc as $location) {
+    if (file_exists($location)) {
+        $servicePath = $location;
+    }
+}
+if ($servicePath == null) {
+    fwrite(STDERR,
+        'Cannot find the services.xml file:' . PHP_EOL .
+        'Did you install through composer?' . PHP_EOL
+    );
+    exit(1);
+}
+
+(new XmlFileLoader($container = new ContainerBuilder(), new FileLocator(__DIR__)))->load($servicePath);
+$container
+    ->addCompilerPass(new OutputFormatterPass())
+    ->addCompilerPass(new CollectorPass())
+    ->compile()
+;
+
+$container->set('container', $container);
+
+$application = new Application();
+$application->add($container->get('command_init'));
+$application->add($container->get('command_analyze'));
+$application->add($container->get('command_self_update'));
+$application->setDefaultCommand('analyze');
+$application->run();

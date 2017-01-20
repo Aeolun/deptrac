@@ -2,6 +2,7 @@
     "name": "sensiolabs-de/deptrac",
     "description": "Deptrac is a static code analysis tool that helps to enforce rules for dependencies between software layers.",
     "license": "MIT",
+    "bin": [ "bin/deptrac" ],
     "require": {
         "php": ">=5.5.9",
         "graphp/graphviz": "0.2.*",
